@@ -121,7 +121,7 @@ plt.plot(
     label=f"KNN com scaling - AUC {auc_knn_1:.2f}")
 
 plt.plot(fpr_knn_1, tpr_knn_1, color='green',
-         label=f'KNN sem scaling - AUC {auc_knn_2:.f}')
+         label=f'KNN sem scaling - AUC {auc_knn_2:.2f}')
 
 plt.plot(
     fpr_dt,
@@ -133,12 +133,11 @@ plt.plot(
     fpr_rf,
     tpr_rf,
     color='blue',
-    label=f'Random Forest - AUC {auc_dt}')
+    label=f'Random Forest - AUC {auc_dt:.2f}')
 
 plt.title('Curva ROC')
 plt.ylabel('TPR - (True Positive Rate)')
 plt.xlabel('FPR - (False Positive Rate)')
 plt.legend(loc='lower right')
 plt.show()
-
 # %%
