@@ -10,19 +10,15 @@ from sklearn.preprocessing import MinMaxScaler
 from matplotlib import pyplot as plt
 from sklearn.metrics import (confusion_matrix,
                              classification_report,
+                             accuracy_score,
                              roc_auc_score,
                              roc_curve)
 import seaborn as sns
+from sklearn.pipeline import Pipeline
 # %%
 df = pd.read_csv('../data/diabetes.csv')
-
-
 # %%
 df.head()
-# %%
-# %%
-df.iloc[:, :-1] = np.log1p(df.iloc[:, :-1]).copy()
-# %%
 # %%
 df.isnull().sum()
 # %%
@@ -33,110 +29,78 @@ y = df.iloc[:, -1].values
 # %%
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42)
-scale = MinMaxScaler()
 # %%
-X_train_scaled = scale.fit_transform(X_train)
-X_test_scaled = scale.transform(X_test)
+# TREINAMENTO USANDO PIPELINES
+models = {
+    'KNN_sem_scaling': Pipeline(steps=[
+        ("model", KNeighborsClassifier(n_neighbors=4, metric='euclidean'))
+    ]),
+    'KNN_com_scaling': Pipeline(steps=[
+        ("scaling", MinMaxScaler()),
+        ("model", KNeighborsClassifier(n_neighbors=4, metric='euclidean'))
+    ]),
+    'RandomForest': Pipeline(steps=[
+        ('model', RandomForestClassifier(
+            n_estimators=200,
+            criterion='gini',
+            max_depth=5,
+            max_features='sqrt',
+            random_state=42)
+         ),]),
+    'DecisionTree': Pipeline(steps=[
+        ('model', DecisionTreeClassifier(
+            max_depth=5,
+            random_state=42
+        ))
+    ])
+}
 # %%
-# TREINAMENTOS
-# Versão sem scaling
-knn = KNeighborsClassifier(metric='euclidean',
-                           n_neighbors=4)
-knn.fit(X_train, y_train)
-y_pred = knn.predict(X_test)
-knn_predict_proba = knn.predict_proba(X_test)[:, 1]
+results = {}
+
+for name, model in models.items():
+    model.fit(X_train, y_train),
+
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+
+    results[name] = {
+        "model": model,
+        "y_pred": y_pred,
+        "y_proba": y_proba
+    }
+
 
 # %%
-# Versão Com scaling
-knn_v2 = KNeighborsClassifier(
-    metric='euclidean',
-    n_neighbors=4
-)
-knn_v2.fit(X_train_scaled, y_train)
-y_pred_v2 = knn_v2.predict(X_test_scaled)
-knn_predict_proba_v2 = knn_v2.predict_proba(X_test_scaled)[:, 1]
+for model, info in results.items():
+    print(f"Classification report do {model}")
+    print(classification_report(y_test, info['y_pred']))
 # %%
-# Random Forest (Ele não necessita de Scaling)
-rf = RandomForestClassifier(
-    n_estimators=200,
-    criterion='gini',
-    random_state=42,
-    max_depth=5,
-    max_features='sqrt'
-)
-rf.fit(X_train, y_train)
-y_pred_rf = rf.predict(X_test)
-rf_predict_proba = rf.predict_proba(X_test)[:, 1]
-# %%
-# Decision Tree
-dt = DecisionTreeClassifier(
-    max_depth=5,
-    random_state=42
-)
-y_pred_dt = dt.fit(X_train, y_train)
-y_pred_dt = dt.predict(X_test)
-dt_predict_proba = dt.predict_proba(X_test)[:, 1]
-# %%
-# KNN SEM SCALING
-print('KNN Versão sem Scaling')
-print(classification_report(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred))
-# KNN COM SCALING
-print('KNN Versão com Scaling')
-print(classification_report(y_test, y_pred_v2))
-print(confusion_matrix(y_test, y_pred_v2))
-# RANDOM FOREST
-print('Random Forest')
-print(classification_report(y_test, y_pred_rf))
-print(confusion_matrix(y_test, y_pred_rf))
-# %%
-# KNN sem scaling
-fpr_knn_1, tpr_knn_1, thresholds = roc_curve(
-    y_true=y_test, y_score=knn_predict_proba)
 
-# Knn com Scaling
-fpr_knn_2, tpr_knn_2, thresholds = roc_curve(
-    y_true=y_test, y_score=knn_predict_proba_v2)
-
-# RF
-fpr_rf, tpr_rf, thresholds = roc_curve(
-    y_true=y_test, y_score=rf_predict_proba)
-
-fpr_dt, tpr_dt, thresholds = roc_curve(
-    y_true=y_test, y_score=dt_predict_proba)
-# %%
-auc_knn_1 = roc_auc_score(y_test, knn_predict_proba)
-auc_knn_2 = roc_auc_score(y_test, knn_predict_proba_v2)
-auc_rf = roc_auc_score(y_test, rf_predict_proba)
-auc_dt = roc_auc_score(y_test, dt_predict_proba)
+for model, info in results.items():
+    print(f'Matriz de confusão do {model}')
+    print(confusion_matrix(y_test, info['y_pred']))
+    print(f'\n acurácia: {accuracy_score(y_test, info['y_pred']):.2f}')
 
 # %%
-plt.plot(
-    fpr_knn_1,
-    fpr_knn_1,
-    linestyle='--',
-    color='grey')
+for model, info in results.items():
+    (results[model]['fpr'],
+     results[model]['tpr'],
+     thresholds) = roc_curve(y_test, info['y_proba'])
 
-plt.plot(
-    fpr_knn_2,
-    tpr_knn_2,
-    color='red',
-    label=f"KNN com scaling - AUC {auc_knn_1:.2f}")
+    results[model]['auc_score'] = roc_auc_score(y_test, info['y_proba'])
+# %%
+# PLOTANDO OS RESULTADOS
+plt.plot([0, 1], [0, 1],
+         linestyle='--',
+         color='grey')
 
-plt.plot(fpr_knn_1, tpr_knn_1, color='green',
-         label=f'KNN sem scaling - AUC {auc_knn_2:.2f}')
+for model, info in results.items():
 
-plt.plot(
-    fpr_dt,
-    tpr_dt,
-    color='magenta',
-    label=f'Decision Tree - AUC {auc_rf:.2f}')
-
-plt.plot(
-    fpr_rf,
-    tpr_rf,
-    color='blue',
-    label=f'Random Forest - AUC {auc_dt:.2f}')
+    plt.plot(
+        info['fpr'],
+        info['tpr'],
+        label=f"{model} - AUC {info['auc_score']:.2f}",
+    )
 
 plt.title('Curva ROC')
 plt.ylabel('TPR - (True Positive Rate)')
