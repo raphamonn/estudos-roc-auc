@@ -20,6 +20,10 @@ df = pd.read_csv('../data/diabetes.csv')
 # %%
 df.head()
 # %%
+# %%
+df.iloc[:, :-1] = np.log1p(df.iloc[:, :-1]).copy()
+# %%
+# %%
 df.isnull().sum()
 # %%
 sns.pairplot(df, hue='Outcome')
@@ -37,8 +41,7 @@ X_test_scaled = scale.transform(X_test)
 # TREINAMENTOS
 # Versão sem scaling
 knn = KNeighborsClassifier(metric='euclidean',
-                           n_neighbors=4,
-                           random_state=42),
+                           n_neighbors=4)
 knn.fit(X_train, y_train)
 y_pred = knn.predict(X_test)
 knn_predict_proba = knn.predict_proba(X_test)[:, 1]
@@ -47,8 +50,8 @@ knn_predict_proba = knn.predict_proba(X_test)[:, 1]
 # Versão Com scaling
 knn_v2 = KNeighborsClassifier(
     metric='euclidean',
-    n_neighbors=4,
-    random_state=42)
+    n_neighbors=4
+)
 knn_v2.fit(X_train_scaled, y_train)
 y_pred_v2 = knn_v2.predict(X_test_scaled)
 knn_predict_proba_v2 = knn_v2.predict_proba(X_test_scaled)[:, 1]
